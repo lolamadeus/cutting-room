@@ -35,7 +35,7 @@ Don't worry about checking these yourself: Claude will on first run.
 ## Get started
 
 ```bash
-git clone <this repo's URL> cutting-room
+git clone https://github.com/lolamadeus/cutting-room.git
 cd cutting-room
 claude
 ```

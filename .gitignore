@@ -1,0 +1,40 @@
+# ---- Your work stays on your machine ----
+# Every project (settings, marks, backups, proxies, edits, renders) lives in projects/
+# and is never committed. Only the folder's README is shared.
+projects/*
+!projects/README.md
+
+# Media, in case any ends up outside projects/
+*.mp4
+*.mov
+*.mkv
+*.m4v
+*.avi
+*.webm
+*.mts
+*.mxf
+*.wav
+*.mp3
+*.flac
+*.aac
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Temp files from atomic writes and renders
+*.tmp
+*.tmp.*
+
+# Claude Code: personal settings (shared settings.json and skills are committed)
+.claude/settings.local.json
+CLAUDE.local.md
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

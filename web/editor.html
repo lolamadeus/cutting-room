@@ -1,0 +1,1250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cutting Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e1014; --panel: #151820; --panel2: #1c2029; --panel3: #242936; --line: #2a303c;
+    --ink: #e9ebf1; --muted: #8a92a4; --dim: #5d6576;
+    --accent: #ff6b3d; --stage: #07080b; --good: #3f8f4a; --bad: #c0443a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 13.5px/1.4 Inter, system-ui, sans-serif; overflow: hidden; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  kbd { font: 600 10.5px Inter, sans-serif; padding: 0 5px; border-radius: 4px; border: 1px solid currentColor; opacity: .6; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: #2c3240; border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
+
+  .app { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; }
+  /* ---------- top bar ---------- */
+  .top { display: flex; align-items: center; gap: 14px; padding: 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .top .home { color: var(--muted); text-decoration: none; font-size: 18px; line-height: 1; }
+  .top .home:hover { color: var(--ink); }
+  .top h1 { font: 700 18px "Space Grotesk", sans-serif; margin: 0; white-space: nowrap; letter-spacing: -.01em; }
+  .top h1 small { font: 500 12px Inter, sans-serif; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+  .tabs { display: flex; background: var(--bg); border-radius: 9px; padding: 3px; border: 1px solid var(--line); }
+  .tabs button { border: none; background: none; padding: 4px 14px; border-radius: 6px; font-weight: 600; color: var(--muted); }
+  .tabs button.on { background: var(--accent); color: #fff; }
+  .prog { flex: 1; min-width: 160px; display: flex; align-items: center; gap: 10px; }
+  .bar { flex: 1; height: 8px; border-radius: 99px; background: var(--panel3); overflow: hidden; display: flex; }
+  .bar span { height: 100%; transition: width .3s; }
+  .prog .txt { font-weight: 600; white-space: nowrap; color: var(--muted); font-size: 12.5px; }
+  .prog .txt b { color: var(--ink); }
+  #saved { font-size: 12px; color: var(--muted); white-space: nowrap; min-width: 70px; text-align: right; }
+  .iconbtn { background: var(--panel2); border: 1px solid var(--line); border-radius: 50%; width: 28px; height: 28px; font-weight: 700; color: var(--muted); }
+  .iconbtn:hover { color: var(--ink); }
+  .notes-link { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 12.5px; border: 1px solid var(--line); border-radius: 7px; padding: 4px 10px; background: var(--panel2); }
+  .notes-link:hover { color: var(--ink); border-color: var(--muted); }
+
+  /* ---------- review layout ---------- */
+  .main { display: grid; grid-template-columns: 290px minmax(0, 1fr) 370px; min-height: 0; }
+  .app.board-mode .main { display: none; }
+  .app:not(.board-mode) .board { display: none; }
+
+  .list { overflow-y: auto; border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; }
+  .filters { display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); z-index: 2; }
+  .chipbtn { border: 1px solid var(--line); background: var(--panel2); color: var(--muted); border-radius: 99px; padding: 1px 9px; font-size: 12px; font-weight: 600; }
+  .chipbtn:hover { color: var(--ink); }
+  .chipbtn.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .grp { position: sticky; top: 37px; z-index: 1; background: var(--bg); padding: 5px 12px; font: 700 12px "Space Grotesk", sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; }
+  .grp span { color: var(--dim); font-family: Inter, sans-serif; }
+  .row { display: flex; gap: 10px; padding: 7px 10px 7px 7px; border-left: 4px solid transparent; cursor: pointer; align-items: center; border-bottom: 1px solid #1d212a; }
+  .row:hover { background: var(--panel2); }
+  .row.cur { background: var(--panel3); }
+  .row img { width: 72px; height: 40px; border-radius: 5px; object-fit: cover; flex: none; background: #000; }
+  .row .info { min-width: 0; flex: 1; }
+  .row .l1 { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+  .row .l2 { display: flex; gap: 6px; align-items: center; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .row .pill { margin-left: auto; font-size: 10.5px; font-weight: 700; padding: 0 7px; border-radius: 99px; color: #fff; white-space: nowrap; }
+  .row.p-dont .info, .row.p-dont img { opacity: .4; }
+  .dots { display: inline-flex; gap: 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+  /* ---------- stage ---------- */
+  .stage { background: var(--stage); display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; min-width: 0; }
+  .vidwrap { position: relative; min-height: 0; overflow: hidden; }
+  .vidwrap video { position: absolute; inset: 10px; width: calc(100% - 20px); height: calc(100% - 20px); object-fit: contain; background: transparent; cursor: pointer; }
+  .bigplay { position: absolute; inset: 0; display: none; place-items: center; pointer-events: none; }
+  .bigplay span { width: 68px; height: 68px; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; display: grid; place-items: center; font-size: 26px; padding-left: 5px; }
+  .paused .bigplay { display: grid; }
+  .liverec { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: var(--bad); color: #fff; padding: 4px 12px; border-radius: 99px; font-weight: 700; display: none; animation: pulse 1s infinite; }
+  .recording .liverec { display: block; }
+  @keyframes pulse { 50% { opacity: .6; } }
+  .toast { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(20,22,28,.92); border: 1px solid var(--line); color: #fff; padding: 6px 14px; border-radius: 99px; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; z-index: 5; }
+  .toast.show { opacity: 1; }
+
+  .controls { padding: 8px 14px 12px; background: var(--panel); border-top: 1px solid var(--line); }
+  .ctlrow { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .time { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 128px; }
+  .cbtn { background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 3px 9px; font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  .cbtn:hover { background: var(--panel3); }
+  .cbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .cbtn.rec { border-color: var(--accent); color: var(--accent); }
+  .cbtn.rec.on { color: #fff; }
+  .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+  .spacer { flex: 1; }
+  .vol { width: 80px; accent-color: var(--accent); }
+  .zoomlbl { font-size: 12px; color: var(--muted); min-width: 34px; text-align: center; font-variant-numeric: tabular-nums; }
+
+  .tl { user-select: none; }
+  .overview { position: relative; height: 12px; border-radius: 4px; background: var(--panel3); margin-bottom: 6px; cursor: pointer; overflow: hidden; }
+  .overview .win { position: absolute; top: 0; bottom: 0; border: 1.5px solid var(--ink); border-radius: 4px; background: rgba(255,255,255,.08); }
+  .overview .m { position: absolute; top: 3px; bottom: 3px; border-radius: 2px; opacity: .85; }
+  .overview .ph { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; }
+  .tracks { position: relative; }
+  .scrub { position: relative; cursor: ew-resize; border-radius: 6px; overflow: hidden; background: #000; }
+  .scrub canvas { display: block; width: 100%; }
+  #stripc { height: 46px; }
+  #wavec { height: 58px; background: #0b0d12; border-top: 1px solid #000; }
+  .ovl { position: absolute; inset: 0; pointer-events: none; }
+  .ovl .ov { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--c) 28%, transparent); border-left: 2px solid var(--c); border-right: 2px solid var(--c); }
+  .ovl .ov.sel { background: color-mix(in srgb, var(--c) 42%, transparent); }
+  .ovl .ov.live { --c: #ff3b3b; }
+  .ovl .inmark { position: absolute; top: 0; bottom: 0; width: 2px; background: #7fd1ff; }
+  .lane { position: relative; height: 28px; margin-top: 5px; border-radius: 6px; background: repeating-linear-gradient(90deg, #1b1f28 0 6px, #20242e 6px 12px); cursor: crosshair; overflow: hidden; }
+  .lane .hint { position: absolute; inset: 0; display: grid; place-items: center; font-size: 12px; color: var(--dim); pointer-events: none; }
+  .hlb { position: absolute; top: 2px; bottom: 2px; background: var(--c); border-radius: 5px; cursor: grab; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 700; min-width: 6px; text-shadow: 0 1px 2px rgba(0,0,0,.5); white-space: nowrap; overflow: hidden; }
+  .hlb.sel { outline: 2px solid #fff; outline-offset: -1px; }
+  .hlb .edge { position: absolute; top: 0; bottom: 0; width: 9px; cursor: ew-resize; }
+  .hlb .edge.l { left: -2px; } .hlb .edge.r { right: -2px; }
+  .playhead { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #fff; pointer-events: none; box-shadow: 0 0 4px rgba(0,0,0,.8); z-index: 3; }
+  .hover-t { position: absolute; top: -22px; transform: translateX(-50%); background: var(--ink); color: var(--bg); font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; pointer-events: none; display: none; z-index: 4; white-space: nowrap; }
+
+  /* ---------- side panel ---------- */
+  .side { overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 14px 16px 30px; }
+  .side h2 { font: 700 19px "Space Grotesk", sans-serif; margin: 0; word-break: break-word; }
+  .side .sub { color: var(--muted); font-size: 12px; margin: 3px 0 4px; }
+  .sec { margin: 16px 0 7px; font-weight: 700; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .sec .r { margin-left: auto; letter-spacing: 0; text-transform: none; font-weight: 500; }
+  .prio { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .prio button { border: 1.5px solid var(--c); background: transparent; color: var(--c); border-radius: 9px; padding: 7px 9px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 6px; filter: brightness(1.25); }
+  .prio button:hover { background: color-mix(in srgb, var(--c) 15%, transparent); }
+  .prio button.on { background: var(--c); color: #fff; filter: none; }
+  select.grpsel { width: 100%; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+
+  .hls { display: flex; flex-direction: column; gap: 6px; }
+  .hl { border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); cursor: pointer; }
+  .hl.sel { border-color: var(--c, var(--accent)); box-shadow: 0 0 0 1px var(--c, var(--accent)); cursor: default; }
+  .hlhead { display: flex; align-items: center; gap: 7px; padding: 6px 6px 6px 9px; }
+  .hlhead .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--dim)); flex: none; }
+  .hlhead .rng { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
+  .hlhead .len { color: var(--muted); font-size: 12px; }
+  .hlhead .grow { flex: 1; }
+  .ib { border: none; background: none; padding: 2px 6px; border-radius: 6px; color: var(--muted); font-size: 13px; }
+  .ib:hover { background: var(--panel3); color: var(--ink); }
+  .ib.star.on { color: #ffcc33; }
+  .hlsum { padding: 0 9px 7px 26px; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hlbody { padding: 2px 9px 9px; border-top: 1px solid var(--line); }
+  .tagrow { margin-top: 7px; }
+  .tagrow .lbl { font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 99px; padding: 1px 9px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .chip:hover { color: var(--ink); border-color: var(--dim); }
+  .chip.on { background: var(--c, var(--ink)); border-color: var(--c, var(--ink)); color: var(--onc, var(--bg)); }
+  .chip .k { opacity: .55; font-size: 10px; margin-left: 3px; }
+  .hlbody input { width: 100%; margin-top: 8px; border: 1px solid var(--line); border-radius: 7px; padding: 5px 8px; background: var(--panel); outline: none; }
+  .hlbody input:focus, textarea:focus { border-color: var(--accent); }
+  .empty { color: var(--muted); font-size: 12.5px; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; }
+  textarea { width: 100%; min-height: 80px; resize: vertical; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; background: var(--panel2); outline: none; }
+  .addbtns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+  .addbtns button { border: 1px dashed var(--accent); background: none; color: var(--accent); border-radius: 7px; padding: 2px 9px; font-weight: 600; font-size: 12px; }
+  .nav { display: flex; gap: 8px; margin-top: 18px; }
+  .nav button { flex: 1; border: 1px solid var(--line); background: var(--panel2); border-radius: 9px; padding: 8px; font-weight: 700; }
+  .nav button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* ---------- board ---------- */
+  .board { overflow-y: auto; padding: 16px 20px 60px; min-height: 0; }
+  .bhead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 420px); gap: 18px; margin-bottom: 18px; }
+  .lenbox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .lenbox .big { font: 700 34px "Space Grotesk", sans-serif; font-variant-numeric: tabular-nums; line-height: 1; }
+  .lenbox .big small { font: 500 13px Inter, sans-serif; color: var(--muted); margin-left: 6px; }
+  .meter { position: relative; height: 10px; border-radius: 99px; background: var(--panel3); margin: 12px 0 6px; }
+  .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: var(--accent); max-width: 100%; }
+  .meter .zone { position: absolute; top: -4px; bottom: -4px; border: 1.5px dashed var(--good); border-radius: 6px; }
+  .meter-l { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }
+  .bopts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; }
+  .bopts .lbl { font-size: 12px; color: var(--muted); margin-right: 2px; }
+  .playall { margin-top: 12px; width: 100%; border: none; background: var(--accent); color: #fff; font-weight: 700; padding: 10px; border-radius: 10px; font-size: 14px; }
+  .notesbox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; }
+  .notesbox h3 { margin: 0 0 4px; font: 700 15px "Space Grotesk", sans-serif; }
+  .notesbox p { margin: 0 0 8px; color: var(--muted); font-size: 12.5px; }
+  .notesbox textarea { flex: 1; min-height: 110px; }
+  .bgroup { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 12px; border-top: 3px solid var(--c); }
+  .bgroup.dropg { outline: 2px dashed var(--accent); }
+  .bgh { display: flex; align-items: center; gap: 10px; padding: 9px 14px; cursor: grab; }
+  .bgh h3 { margin: 0; font: 700 15px "Space Grotesk", sans-serif; }
+  .bgh .meta { color: var(--muted); font-size: 12.5px; }
+  .bgh .grip { color: var(--dim); letter-spacing: -2px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 10px; padding: 4px 14px 14px; min-height: 60px; }
+  .cards .none { color: var(--dim); font-size: 12px; padding: 0 4px; }
+  .bgroup.empty .cards { min-height: 0; padding-bottom: 10px; }
+  .bgroup.empty .bgh { padding-bottom: 4px; }
+  .card { width: 210px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: grab; position: relative; }
+  .card:hover { border-color: var(--dim); }
+  .card.dragging { opacity: .35; }
+  .card.drop-before::before, .card.drop-after::after { content: ""; position: absolute; top: 0; bottom: 0; width: 4px; background: var(--accent); border-radius: 2px; z-index: 2; }
+  .card.drop-before::before { left: 0; } .card.drop-after::after { right: 0; }
+  .card .th { height: 104px; background-color: #000; background-repeat: no-repeat; position: relative; }
+  .card .th .d { position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,.75); padding: 0 6px; border-radius: 4px; font-weight: 700; font-size: 12px; }
+  .card .th .n { position: absolute; left: 6px; top: 6px; background: rgba(0,0,0,.75); padding: 0 6px; border-radius: 4px; font-weight: 700; font-size: 11px; color: var(--muted); }
+  .card .th .key { position: absolute; right: 6px; top: 4px; color: #ffcc33; font-size: 16px; text-shadow: 0 1px 3px #000; }
+  .card .bd { padding: 7px 9px 8px; }
+  .card .t1 { font-weight: 600; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .t2 { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  .card .t3 { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+  .card .t3 span { background: var(--panel3); border-radius: 99px; padding: 0 7px; font-size: 10.5px; color: var(--muted); }
+  .card .t3 span.role { color: var(--ink); background: color-mix(in srgb, var(--accent) 35%, var(--panel3)); }
+  .card .nt { margin-top: 5px; font-size: 11.5px; color: var(--ink); opacity: .85; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .acts { position: absolute; left: 0; right: 0; top: 0; height: 104px; display: none; place-items: center; grid-auto-flow: column; gap: 8px; background: rgba(0,0,0,.4); }
+  .card:hover .acts { display: grid; }
+  .card .acts button { border: none; background: rgba(255,255,255,.92); color: #111; border-radius: 99px; padding: 4px 11px; font-weight: 700; font-size: 12px; }
+
+  /* ---------- rough cut player ---------- */
+  #rc { position: fixed; inset: 0; background: rgba(4,5,8,.96); z-index: 70; display: none; grid-template-rows: auto minmax(0, 1fr) auto; }
+  #rc.show { display: grid; }
+  .rctop { display: flex; align-items: center; gap: 12px; padding: 10px 18px; }
+  .rctop h3 { margin: 0; font: 700 16px "Space Grotesk", sans-serif; }
+  .rctop .info { color: var(--muted); font-size: 13px; }
+  .rcvid { position: relative; min-height: 0; }
+  .rcvid video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .rcvid video.hide { visibility: hidden; }
+  .rccap { position: absolute; left: 18px; bottom: 14px; background: rgba(0,0,0,.7); padding: 6px 12px; border-radius: 8px; font-size: 13px; max-width: 70%; }
+  .rccap b { color: var(--c, var(--accent)); }
+  .rcbot { padding: 10px 18px 16px; }
+  .rcsegs { display: flex; height: 22px; gap: 2px; cursor: pointer; }
+  .rcsegs div { background: var(--c); opacity: .45; border-radius: 3px; min-width: 2px; position: relative; overflow: hidden; }
+  .rcsegs div.cur { opacity: 1; }
+  .rcsegs div .p { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,.45); }
+  .rcctl { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+
+  #offline { position: fixed; left: 50%; top: 56px; transform: translateX(-50%); z-index: 80; max-width: min(640px, calc(100% - 32px)); background: var(--bad); color: #fff; padding: 12px 16px; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.5); display: none; }
+  #offline.show { display: block; }
+  #help { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; place-items: center; z-index: 90; padding: 16px; }
+  #help.show { display: grid; }
+  #help .box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 26px; max-width: 680px; width: 100%; max-height: 90vh; overflow: auto; }
+  #help h3 { font: 700 22px "Space Grotesk", sans-serif; margin: 0 0 10px; }
+  #help h4 { margin: 16px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+  #help table { border-collapse: collapse; width: 100%; }
+  #help td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  #help td:first-child { white-space: nowrap; width: 1%; }
+  #help p { margin: 6px 0; color: #c9cdd8; }
+  .boot { display: grid; place-items: center; height: 100%; color: var(--muted); padding: 20px; text-align: center; }
+
+  @media (max-width: 1150px) {
+    body { overflow: auto; }
+    .app { height: auto; min-height: 100vh; }
+    .main { grid-template-columns: 1fr; }
+    .list { max-height: 32vh; border-right: none; }
+    .vidwrap { height: 56vh; }
+    .bhead { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top">
+    <a class="home" href="/" title="All projects">⌂</a>
+    <h1 id="ptitle">Cutting Room</h1>
+    <div class="tabs"><button id="tab-review" class="on">Review</button><button id="tab-board">Board</button></div>
+    <a class="notes-link" href="notes/" title="Watch renders and leave timed notes for the next version">Render notes</a>
+    <div class="prog"><div class="bar" id="bar"></div><span class="txt" id="progtxt"></span></div>
+    <span id="saved"></span>
+    <button class="iconbtn" id="helpbtn" title="How it works (?)">?</button>
+  </div>
+
+  <div class="main">
+    <nav class="list" id="list"></nav>
+    <section class="stage">
+      <div class="vidwrap paused" id="vidwrap">
+        <video id="v" playsinline preload="auto"></video>
+        <div class="bigplay"><span>▶</span></div>
+        <div class="liverec">● marking: press H to stop</div>
+        <div class="toast" id="toast"></div>
+      </div>
+      <div class="controls">
+        <div class="ctlrow">
+          <button class="cbtn" id="playbtn" title="Play / pause (Space)">▶ Play</button>
+          <span class="time" id="time">0:00.0 / 0:00.0</span>
+          <button class="cbtn" id="loopbtn" title="Loop: repeats the clip, or the highlight you're playing (L)">⟲ Loop</button>
+          <button class="cbtn" id="mutebtn" title="Mute (M)">🔊</button>
+          <input type="range" class="vol" id="vol" min="0" max="1" step="0.02" title="Volume">
+          <span class="sep"></span>
+          <span id="speed"></span>
+          <span class="sep"></span>
+          <button class="cbtn" id="zoomout" title="Zoom out (-)">−</button>
+          <span class="zoomlbl" id="zoomlbl">1×</span>
+          <button class="cbtn" id="zoomin" title="Zoom in (=)">+</button>
+          <button class="cbtn" id="zoomfit" title="Show the whole clip (0)">Fit</button>
+          <span class="spacer"></span>
+          <button class="cbtn rec" id="markbtn" title="Start / stop marking a highlight while it plays (H)">● Mark <kbd>H</kbd></button>
+        </div>
+        <div class="tl" id="tl">
+          <div class="overview" id="overview" title="Whole clip: click to jump, drag to move the zoomed view"></div>
+          <div class="tracks" id="tracks">
+            <div class="scrub" id="scrub">
+              <canvas id="stripc"></canvas>
+              <canvas id="wavec"></canvas>
+              <div class="ovl" id="ovl"></div>
+            </div>
+            <div class="lane" id="lane"><div class="hint" id="lanehint">drag here to mark a highlight · scroll on the timeline to zoom</div></div>
+            <div class="playhead" id="playhead"></div>
+            <div class="hover-t" id="hovert"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <aside class="side" id="side">
+      <h2 id="title"></h2>
+      <div class="sub" id="subtitle"></div>
+
+      <div class="sec">Priority</div>
+      <div class="prio" id="prio"></div>
+
+      <div class="sec">Group</div>
+      <select class="grpsel" id="grpsel"></select>
+
+      <div class="sec">Highlights <span id="hlcount"></span><span class="r" id="hltotal"></span></div>
+      <div class="hls" id="hls"></div>
+      <div class="addbtns">
+        <button id="add3" title="Add a 3-second highlight from the playhead">+ 3s from here</button>
+        <button id="add6" title="Add a 6-second highlight from the playhead">+ 6s from here</button>
+        <button id="addview" title="Highlight what's visible in the zoomed timeline">+ visible range</button>
+      </div>
+
+      <div class="sec">Clip notes</div>
+      <textarea id="notes" placeholder="Anything about this clip as a whole: what it shows off, mix issues, which version is best…"></textarea>
+
+      <div class="nav">
+        <button id="prevbtn">← Previous</button>
+        <button id="nextbtn" class="primary">Next clip →</button>
+      </div>
+    </aside>
+  </div>
+
+  <div class="board" id="board">
+    <div class="bhead">
+      <div class="lenbox">
+        <div class="big" id="btotal">0:00<small></small></div>
+        <div class="meter" id="bmeter"><div class="zone" id="bzone"></div><div class="fill" id="bfill"></div></div>
+        <div class="meter-l" id="bmeterl"></div>
+        <div class="bopts" id="bopts"></div>
+        <button class="playall" id="playall">▶ Play rough cut</button>
+      </div>
+      <div class="notesbox">
+        <h3>Edit direction</h3>
+        <p id="brief"></p>
+        <textarea id="pnotes" placeholder="Overall notes for the edit: what to open and close on, pacing, transitions, music bed, things to avoid…"></textarea>
+      </div>
+    </div>
+    <div id="bgroups"></div>
+  </div>
+</div>
+
+<div id="rc">
+  <div class="rctop">
+    <h3>Rough cut</h3><span class="info" id="rcinfo"></span><span class="spacer" style="flex:1"></span>
+    <button class="cbtn" id="rcclose">Close <kbd>Esc</kbd></button>
+  </div>
+  <div class="rcvid" id="rcvid">
+    <video id="rcA" playsinline preload="auto"></video>
+    <video id="rcB" playsinline preload="auto" class="hide"></video>
+    <div class="rccap" id="rccap"></div>
+  </div>
+  <div class="rcbot">
+    <div class="rcsegs" id="rcsegs"></div>
+    <div class="rcctl">
+      <button class="cbtn" id="rcprev">⏮ Prev</button>
+      <button class="cbtn" id="rcplay">❚❚ Pause</button>
+      <button class="cbtn" id="rcnext">Next ⏭</button>
+      <span class="time" id="rctime"></span>
+      <span class="spacer" style="flex:1"></span>
+      <button class="cbtn" id="rcopen">Open this clip in Review</button>
+    </div>
+  </div>
+</div>
+
+<div id="offline">
+  <b>Can't reach the cutting-room server</b>, so clips won't load. Your changes are kept in this browser and will save to the file as soon as it's back.
+  To restart it, double-click <b>Open cutting room</b> in the cutting-room folder (<b>cutting-room.sh</b> on macOS / Linux), then refresh this page.
+</div>
+
+<div id="help"><div class="box">
+  <h3>How it works</h3>
+  <p><b>Review</b>: go through each clip. Drag along the <b>lane under the waveform</b> to mark the bits worth using, tag each one, add notes, then give the clip a <b>priority</b>. Everything saves automatically.</p>
+  <p><b>Board</b>: every highlight, grouped by category. Drag cards to reorder them or move them to another category, and drag a category's header to reorder the sections. That order is the rough running order. <b>Play rough cut</b> plays them back to back, and the total is checked against the target length.</p>
+  <h4>Playback</h4>
+  <table>
+    <tr><td><kbd>Space</kbd></td><td>Play / pause (or click the video)</td></tr>
+    <tr><td><kbd>←</kbd> <kbd>→</kbd></td><td>Back / forward 1s (<kbd>Shift</kbd>: one frame)</td></tr>
+    <tr><td><kbd>L</kbd> · <kbd>M</kbd></td><td>Loop (the clip, or the highlight you're playing) · mute</td></tr>
+    <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Slower / faster</td></tr>
+    <tr><td><kbd>=</kbd> <kbd>-</kbd> <kbd>0</kbd></td><td>Zoom the timeline in / out / fit. Scrolling over the timeline zooms too (<kbd>Shift</kbd>+scroll pans).</td></tr>
+  </table>
+  <h4>Marking</h4>
+  <table>
+    <tr><td><kbd>H</kbd></td><td>Start marking while it plays, press again to stop</td></tr>
+    <tr><td><kbd>I</kbd> / <kbd>O</kbd></td><td>Set the in / out point at the playhead</td></tr>
+    <tr><td><kbd>Shift</kbd>+<kbd>1</kbd>…<kbd>9</kbd></td><td>Set the category of the selected highlight</td></tr>
+    <tr><td><kbd>K</kbd></td><td>Toggle ★ key moment on the selected highlight</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Select the next highlight in this clip</td></tr>
+    <tr><td><kbd>Del</kbd></td><td>Delete the selected highlight</td></tr>
+    <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td><td>Clip priority: Must · Try · If there's space · Don't use</td></tr>
+  </table>
+  <h4>Moving around</h4>
+  <table>
+    <tr><td><kbd>N</kbd> / <kbd>P</kbd></td><td>Next / previous clip (<kbd>↓</kbd> <kbd>↑</kbd> too)</td></tr>
+    <tr><td><kbd>U</kbd></td><td>Next clip without a priority</td></tr>
+    <tr><td><kbd>B</kbd></td><td>Switch between Review and Board</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Leave a text box, close this help or the rough cut</td></tr>
+  </table>
+  <p style="margin-top:12px">Highlight bars: drag the ends to trim, drag the middle to move, click to play just that bit. The waveform is on a dB scale, so quiet detail shows up.</p>
+</div></div>
+
+<script>
+/* ================= setup ================= */
+const PID = decodeURIComponent(location.pathname.split("/")[2] || "");
+const LSKEY = "cutting-room:" + PID;
+const SPEEDS = [0.5, 1, 1.5, 2];
+const NONE = "__none";
+let CFG, CLIPS = [], CLIP = {}, PRIOS = [], PRIO = {}, TAGSETS = [], BSET = null, OPT = {};
+let state = { v: 1, clips: {}, cur: null, speed: 1, loop: false, muted: false, volume: 1, view: "review",
+  filter: "all", order: [], boardGroups: [], boardPrios: null, notes: "" };
+let sel = null, liveStart = null, inMark = null, playHlUntil = null, view = { a: 0, b: 1 };
+const WAVES = {}, STRIPS = {};
+
+const $ = s => document.querySelector(s);
+const v = $("#v");
+const h = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, val] of Object.entries(attrs || {})) {
+    if (val == null || val === false) continue;
+    if (k.startsWith("on")) e.addEventListener(k.slice(2), val);
+    else if (k === "style") e.style.cssText = val;
+    else e.setAttribute(k, val === true ? "" : val);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k);
+  return e;
+};
+const fmt = t => { t = Math.max(0, t || 0); const m = Math.floor(t / 60); return `${m}:${(t - m * 60).toFixed(1).padStart(4, "0")}`; };
+const fmtS = t => { t = Math.round(Math.max(0, t || 0)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; };
+const pretty = c => c.file.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ");
+const uid = () => Math.random().toString(36).slice(2, 10);
+const clip = () => CLIP[state.cur];
+const rec = (id = state.cur) => (state.clips[id] ||= { prio: null, hl: [], notes: "" });
+const groupOf = c => state.clips[c.id]?.group || c.group;
+const catOf = x => (BSET && x.tags?.[BSET.id]) || null;
+const catColor = x => (catOf(x) && OPT[BSET.id][catOf(x)]?.color) || "var(--accent)";
+const hlDur = x => x.e - x.s;
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("show"), 1400);
+}
+
+/* ================= saving ================= */
+let saveTimer, retryTimer, dirty = false;
+function offline(on) {
+  $("#offline").classList.toggle("show", on);
+  clearInterval(retryTimer);
+  if (on) retryTimer = setInterval(flush, 5000);
+}
+function save() {
+  dirty = true;
+  state.savedAt = Date.now();
+  try { localStorage.setItem(LSKEY, JSON.stringify(state)); } catch {}
+  $("#saved").textContent = "saving…";
+  clearTimeout(saveTimer); saveTimer = setTimeout(flush, 500);
+}
+async function flush() {
+  clearTimeout(saveTimer);
+  try {
+    const r = await fetch("save", { method: "POST", body: JSON.stringify(state) });
+    $("#saved").textContent = r.ok ? "saved ✓" : "save failed";
+    if (r.ok) dirty = false;
+    offline(!r.ok);
+  } catch { $("#saved").textContent = "not saved to file yet"; offline(true); }
+}
+addEventListener("pagehide", () => { if (dirty) navigator.sendBeacon("save", JSON.stringify(state)); });
+v.addEventListener("error", () => { if (v.src) offline(true); });
+
+/* ================= ordering helpers ================= */
+function groupNames() {
+  const names = [...CFG.groups];
+  for (const c of CLIPS) if (!names.includes(groupOf(c))) names.push(groupOf(c));
+  return names;
+}
+function orderedClips() {
+  const gs = groupNames();
+  return [...CLIPS].sort((a, b) => gs.indexOf(groupOf(a)) - gs.indexOf(groupOf(b)) || CLIPS.indexOf(a) - CLIPS.indexOf(b));
+}
+function visible(c) {
+  const p = state.clips[c.id]?.prio || null, f = state.filter;
+  return f === "all" || (f === "todo" ? !p : f === "hl" ? (state.clips[c.id]?.hl.length > 0) : p === f);
+}
+
+/* ================= top bar + list ================= */
+function renderTop() {
+  const counts = Object.fromEntries(PRIOS.map(p => [p.id, 0]));
+  for (const c of CLIPS) { const p = state.clips[c.id]?.prio; if (p) counts[p]++; }
+  const done = Object.values(counts).reduce((a, b) => a + b, 0);
+  const bar = $("#bar"); bar.innerHTML = "";
+  for (const p of PRIOS) bar.append(h("span", { style: `width:${counts[p.id] / CLIPS.length * 100}%;background:${p.color}`, title: `${p.label}: ${counts[p.id]}` }));
+  const { total } = boardItems();
+  $("#progtxt").innerHTML = `<b>${done}</b> / ${CLIPS.length} clips reviewed · <b>${fmtS(total)}</b> selected`;
+  return counts;
+}
+
+function renderList() {
+  const counts = renderTop();
+  const list = $("#list"), scroll = list.scrollTop; list.innerHTML = "";
+  const done = Object.values(counts).reduce((a, b) => a + b, 0);
+  const nhl = CLIPS.filter(c => state.clips[c.id]?.hl.length).length;
+  const f = h("div", { class: "filters" });
+  for (const [id, label] of [["all", `All ${CLIPS.length}`], ["todo", `To do ${CLIPS.length - done}`], ["hl", `Marked ${nhl}`],
+      ...PRIOS.map(p => [p.id, `${p.label} ${counts[p.id]}`])])
+    f.append(h("button", { class: "chipbtn" + (state.filter === id ? " on" : ""), onclick: () => { state.filter = id; renderList(); save(); } }, label));
+  list.append(f);
+  let g = null;
+  for (const c of orderedClips()) {
+    if (!visible(c) && c.id !== state.cur) continue;
+    if (groupOf(c) !== g) {
+      g = groupOf(c);
+      const inG = CLIPS.filter(x => groupOf(x) === g);
+      list.append(h("div", { class: "grp" }, g, h("span", {}, `${inG.length} · ${fmtS(inG.reduce((a, x) => a + x.dur, 0))}`)));
+    }
+    const r = state.clips[c.id] || {};
+    const p = r.prio && PRIO[r.prio];
+    const hls = r.hl || [];
+    list.append(h("div", { class: `row${c.id === state.cur ? " cur" : ""}${r.prio ? " p-" + r.prio : ""}`, id: "row-" + c.id,
+        style: p ? `border-left-color:${p.color}` : "", onclick: () => load(c.id), title: c.file },
+      h("img", { src: `media/thumbs/${encodeURIComponent(c.id)}.jpg`, loading: "lazy", alt: "" }),
+      h("div", { class: "info" },
+        h("div", { class: "l1" }, pretty(c)),
+        h("div", { class: "l2" }, fmtS(c.dur),
+          hls.length ? h("span", { class: "dots", title: `${hls.length} highlight(s), ${hls.reduce((a, x) => a + hlDur(x), 0).toFixed(1)}s` },
+            ...hls.slice(0, 10).map(x => h("i", { style: `background:${catColor(x)}` }))) : null,
+          p ? h("span", { class: "pill", style: `background:${p.color}` }, p.label) : null))));
+  }
+  list.scrollTop = scroll;
+}
+
+/* ================= loading a clip ================= */
+function load(id, at) {
+  if (liveStart != null) stopLive(false);
+  state.cur = id; sel = null; inMark = null; playHlUntil = null;
+  const c = clip();
+  view = { a: 0, b: c.dur };
+  v.src = `media/proxy/${encodeURIComponent(id)}.mp4`;
+  v.playbackRate = state.speed; v.muted = state.muted; v.volume = state.volume;
+  if (at != null) v.addEventListener("loadedmetadata", () => { v.currentTime = at; }, { once: true });
+  $("#title").textContent = pretty(c);
+  $("#subtitle").textContent = `${fmt(c.dur)} · ${c.w}×${c.h} · ${c.fps}fps${c.audio ? "" : " · no audio"} · ${c.file}`;
+  loadStrip(c); loadWave(c);
+  renderSide(); renderList(); drawTimeline();
+  document.getElementById("row-" + id)?.scrollIntoView({ block: "nearest" });
+  save();
+}
+function go(delta) {
+  const list = orderedClips().filter(c => visible(c) || c.id === state.cur);
+  const i = list.findIndex(c => c.id === state.cur) + delta;
+  if (i >= 0 && i < list.length) load(list[i].id);
+  else toast(delta > 0 ? "That's the last clip" : "That's the first clip");
+}
+function nextTodo() {
+  const list = orderedClips(), i = list.findIndex(c => c.id === state.cur);
+  const n = [...list.slice(i + 1), ...list.slice(0, i)].find(c => !state.clips[c.id]?.prio);
+  n ? load(n.id) : toast("Every clip has a priority 🎉");
+}
+function loadStrip(c) {
+  if (STRIPS[c.id]) return;
+  const img = new Image();
+  img.onload = () => { if (state.cur === c.id) drawTimeline(); };
+  img.src = `media/strips/${encodeURIComponent(c.id)}.jpg`;
+  STRIPS[c.id] = img;
+}
+async function loadWave(c) {
+  if (WAVES[c.id] || !c.audio) return;
+  WAVES[c.id] = "loading";
+  try { WAVES[c.id] = await (await fetch(`media/waves/${encodeURIComponent(c.id)}.json`)).json(); }
+  catch { WAVES[c.id] = null; }
+  if (state.cur === c.id) drawTimeline();
+}
+
+/* ================= side panel ================= */
+function setPrio(id) {
+  const r = rec();
+  r.prio = r.prio === id ? null : id;
+  renderPrio(); renderList(); save();
+  if (r.prio) {
+    toast(PRIO[id].label);
+    if (id === "dont") { const from = state.cur; setTimeout(() => { if (state.cur === from && rec().prio === "dont") go(1); }, 450); }
+  }
+}
+function renderPrio() {
+  const box = $("#prio"); box.innerHTML = "";
+  for (const p of PRIOS)
+    box.append(h("button", { class: rec().prio === p.id ? "on" : "", style: `--c:${p.color}`, onclick: () => setPrio(p.id) }, p.label, h("kbd", {}, p.key)));
+}
+function renderGroupSel() {
+  const s = $("#grpsel"); s.innerHTML = "";
+  for (const g of groupNames()) s.append(h("option", { value: g, selected: g === groupOf(clip()) }, g));
+  s.append(h("option", { value: "__new" }, "New group…"));
+}
+$("#grpsel").addEventListener("change", e => {
+  let g = e.target.value;
+  if (g === "__new") { g = prompt("Name of the new group"); if (!g) return renderGroupSel(); }
+  rec().group = g === clip().group ? undefined : g;
+  renderGroupSel(); renderList(); save();
+});
+
+function renderHls() {
+  const r = rec(), box = $("#hls"); box.innerHTML = "";
+  $("#hlcount").textContent = r.hl.length ? `(${r.hl.length})` : "";
+  $("#hltotal").textContent = r.hl.length ? `${r.hl.reduce((a, x) => a + hlDur(x), 0).toFixed(1)}s total` : "";
+  if (!r.hl.length) box.append(h("div", { class: "empty" }, "None yet. Drag along the lane under the waveform, press H while it plays, or use I / O."));
+  r.hl.forEach((x, i) => box.append(hlCard(x, i)));
+}
+function tagSummary(x) {
+  const bits = [];
+  for (const set of TAGSETS) {
+    const val = x.tags?.[set.id];
+    const ids = Array.isArray(val) ? val : val ? [val] : [];
+    for (const id of ids) if (OPT[set.id][id]) bits.push(OPT[set.id][id].label);
+  }
+  return [...bits, x.note].filter(Boolean).join(" · ");
+}
+function hlCard(x, i) {
+  const isSel = sel === i;
+  const card = h("div", { class: "hl" + (isSel ? " sel" : ""), style: `--c:${catColor(x)}`, "data-i": i,
+      onclick: e => { if (!isSel && !e.target.closest("button")) selectHl(i, true); } },
+    h("div", { class: "hlhead" },
+      h("span", { class: "dot", style: catOf(x) ? "" : "background:var(--dim)" }),
+      h("span", { class: "rng" }, `${fmt(x.s)} – ${fmt(x.e)}`),
+      h("span", { class: "len" }, `${hlDur(x).toFixed(1)}s`),
+      h("span", { class: "grow" }),
+      h("button", { class: "ib star" + (x.key ? " on" : ""), title: "Key moment (K)", onclick: () => { x.key = !x.key; afterHlChange(); } }, x.key ? "★" : "☆"),
+      h("button", { class: "ib", title: "Play this bit", onclick: () => playHl(i) }, "▶"),
+      h("button", { class: "ib", title: "Delete (Del)", onclick: () => delHl(i) }, "✕")));
+  if (!isSel) {
+    const sum = tagSummary(x);
+    card.append(h("div", { class: "hlsum" }, sum || "no tags yet"));
+    return card;
+  }
+  const body = h("div", { class: "hlbody" });
+  for (const set of TAGSETS) {
+    const val = x.tags?.[set.id];
+    const chips = h("div", { class: "chips" });
+    set.options.forEach((o, k) => {
+      const on = Array.isArray(val) ? val.includes(o.id) : val === o.id;
+      chips.append(h("button", { class: "chip" + (on ? " on" : ""), style: o.color ? `--c:${o.color};--onc:#fff` : "",
+        onclick: () => setTag(x, set, o.id) }, o.label, set === BSET && k < 9 ? h("span", { class: "k" }, `⇧${k + 1}`) : null));
+    });
+    body.append(h("div", { class: "tagrow" }, h("div", { class: "lbl" }, set.label + (set.mode === "multi" ? " (any)" : "")), chips));
+  }
+  const note = h("input", { placeholder: "note for this bit: what to listen for, how to cut it…", oninput: e => { x.note = e.target.value; save(); } });
+  note.value = x.note || "";
+  body.append(note);
+  card.append(body);
+  return card;
+}
+function setTag(x, set, id) {
+  x.tags ||= {};
+  if (set.mode === "multi") {
+    const a = x.tags[set.id] ||= [];
+    const i = a.indexOf(id); i >= 0 ? a.splice(i, 1) : a.push(id);
+  } else x.tags[set.id] = x.tags[set.id] === id ? null : id;
+  afterHlChange();
+}
+function selectHl(i, seek) {
+  sel = i;
+  const x = rec().hl[i];
+  if (seek && x && v.paused) v.currentTime = x.s;
+  if (x && (x.s < view.a || x.e > view.b)) { const span = view.b - view.a; if (hlDur(x) < span) setView(x.s - (span - hlDur(x)) / 2, span); }
+  renderHls(); drawTimeline();
+}
+function renderSide() {
+  renderPrio(); renderGroupSel(); renderHls();
+  $("#notes").value = rec().notes || "";
+}
+
+/* ================= highlights ================= */
+function playHl(i) {
+  const x = rec().hl[i]; sel = i;
+  v.currentTime = x.s; playHlUntil = i; v.play();
+  renderHls(); drawTimeline();
+}
+function addHl(s, e) {
+  const d = clip().dur;
+  s = Math.max(0, Math.min(s, d)); e = Math.max(0, Math.min(e, d));
+  if (e < s) [s, e] = [e, s];
+  if (e - s < 0.3) e = Math.min(d, s + 0.3);
+  const r = rec();
+  const prev = r.hl[r.hl.length - 1];
+  const x = { id: uid(), s: +s.toFixed(2), e: +e.toFixed(2), note: "", key: false,
+    tags: BSET && catOf(prev || {}) ? { [BSET.id]: catOf(prev) } : {} };
+  r.hl.push(x); sortHls(); sel = r.hl.indexOf(x);
+  afterHlChange();
+}
+function sortHls() { rec().hl.sort((a, b) => a.s - b.s); }
+function delHl(i) { rec().hl.splice(i, 1); sel = null; afterHlChange(); }
+function afterHlChange() { renderHls(); drawTimeline(); renderList(); save(); }
+
+function startLive() {
+  liveStart = v.currentTime;
+  $("#vidwrap").classList.add("recording"); $("#markbtn").classList.add("on");
+  if (v.paused) v.play();
+}
+function stopLive(keep = true) {
+  const s = liveStart; liveStart = null;
+  $("#vidwrap").classList.remove("recording"); $("#markbtn").classList.remove("on");
+  if (keep && s != null) { addHl(s, v.ended ? clip().dur : v.currentTime); toast("Highlight added"); }
+  drawTimeline();
+}
+
+/* ================= timeline ================= */
+const span = () => view.b - view.a;
+const pct = t => `${(t - view.a) / span() * 100}%`;
+const timeAt = (el, e) => { const b = el.getBoundingClientRect(); return view.a + Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)) * span(); };
+function setView(a, s) {
+  const d = clip().dur;
+  s = Math.max(Math.min(d, 1.5), Math.min(d, s));
+  a = Math.max(0, Math.min(d - s, a));
+  view = { a, b: a + s };
+  drawTimeline();
+}
+function zoomAt(t, f) { const s = span() * f; setView(t - (t - view.a) * (s / span()), s); }
+function zoomBy(f) { zoomAt(v.currentTime >= view.a && v.currentTime <= view.b ? v.currentTime : (view.a + view.b) / 2, f); }
+
+function sizeCanvas(cv) {
+  const dpr = devicePixelRatio || 1, w = Math.round(cv.clientWidth * dpr), hh = Math.round(cv.clientHeight * dpr);
+  if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; }
+  return cv.getContext("2d");
+}
+function drawStrip() {
+  const cv = $("#stripc"), ctx = sizeCanvas(cv), c = clip(), img = STRIPS[c.id];
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!img?.complete || !img.naturalWidth) return;
+  const tw = img.naturalWidth / c.tiles, th = img.naturalHeight;
+  const slot = cv.height * 16 / 9, n = Math.ceil(cv.width / slot);
+  for (let i = 0; i < n; i++) {
+    const t = view.a + (i + 0.5) * slot / cv.width * span();
+    const k = Math.max(0, Math.min(c.tiles - 1, Math.floor(t / c.dur * c.tiles)));
+    ctx.drawImage(img, k * tw, 0, tw, th, i * slot, 0, slot, cv.height);
+  }
+}
+const dbScale = v => v <= 0 ? 0 : Math.max(0, 1 + 20 * Math.log10(v / 1000) / 48);   // 48 dB display range
+function drawWave() {
+  const cv = $("#wavec"), ctx = sizeCanvas(cv), c = clip(), w = WAVES[c.id];
+  const W = cv.width, H = cv.height, mid = H / 2;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#222836"; ctx.fillRect(0, mid, W, 1);
+  if (!c.audio) { ctx.fillStyle = "#5d6576"; ctx.font = `${12 * devicePixelRatio}px Inter`; ctx.fillText("no audio track", 10 * devicePixelRatio, mid - 4); return; }
+  if (!w || w === "loading") return;
+  const rate = w.rate, n = w.peak.length, s = span();
+  const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  for (let x = 0; x < W; x++) {
+    const i0 = Math.floor((view.a + x / W * s) * rate), i1 = Math.max(i0 + 1, Math.ceil((view.a + (x + 1) / W * s) * rate));
+    let p = 0, r = 0;
+    for (let i = i0; i < i1 && i < n; i++) { if (w.peak[i] > p) p = w.peak[i]; if (w.rms[i] > r) r = w.rms[i]; }
+    const ph = dbScale(p) * (mid - 1), rh = dbScale(r) * (mid - 1);
+    ctx.fillStyle = "#5b6478"; ctx.fillRect(x, mid - ph, 1, ph * 2);
+    ctx.fillStyle = accent; ctx.fillRect(x, mid - rh, 1, rh * 2);
+  }
+}
+function drawOverlays() {
+  const c = clip(); if (!c) return;
+  const ovl = $("#ovl"), lane = $("#lane"), r = rec();
+  ovl.innerHTML = ""; lane.querySelectorAll(".hlb").forEach(e => e.remove());
+  r.hl.forEach((x, i) => {
+    if (x.e < view.a || x.s > view.b) return;
+    const st = `left:${pct(x.s)};width:${hlDur(x) / span() * 100}%;--c:${catColor(x)}`;
+    ovl.append(h("div", { class: "ov" + (sel === i ? " sel" : ""), style: st }));
+    const wide = hlDur(x) / span() > 0.06;
+    lane.append(h("div", { class: "hlb" + (sel === i ? " sel" : ""), style: st, "data-i": i, title: tagSummary(x) || "highlight" },
+      h("div", { class: "edge l", "data-edge": "s" }), h("div", { class: "edge r", "data-edge": "e" }),
+      wide ? `${x.key ? "★ " : ""}${hlDur(x).toFixed(1)}s` : ""));
+  });
+  $("#lanehint").style.display = r.hl.length ? "none" : "grid";
+  if (liveStart != null) {
+    const a = Math.min(liveStart, v.currentTime), b = Math.max(liveStart, v.currentTime);
+    ovl.append(h("div", { class: "ov live", style: `left:${pct(a)};width:${(b - a) / span() * 100}%` }));
+  }
+  if (inMark != null) ovl.append(h("div", { class: "inmark", style: `left:${pct(inMark)}` }));
+}
+function drawOverview() {
+  const c = clip(), o = $("#overview"); o.innerHTML = "";
+  const P = t => `${t / c.dur * 100}%`;
+  for (const x of rec().hl) o.append(h("div", { class: "m", style: `left:${P(x.s)};width:${hlDur(x) / c.dur * 100}%;background:${catColor(x)}` }));
+  if (span() < c.dur - 0.01) o.append(h("div", { class: "win", style: `left:${P(view.a)};width:${span() / c.dur * 100}%` }));
+  o.append(h("div", { class: "ph", id: "ovph" }));
+  $("#zoomlbl").textContent = `${(c.dur / span()).toFixed(c.dur / span() < 10 ? 1 : 0)}×`.replace(".0×", "×");
+}
+function drawTimeline() { if (!clip()) return; drawStrip(); drawWave(); drawOverlays(); drawOverview(); }
+
+function tick() {
+  const c = clip();
+  if (c) {
+    const t = v.currentTime;
+    if (playHlUntil != null) {
+      const x = rec().hl[playHlUntil];
+      if (!x) playHlUntil = null;
+      else if (t >= x.e) { if (state.loop) v.currentTime = x.s; else { v.pause(); playHlUntil = null; } }
+    }
+    if (!v.paused && !dragging && (t > view.b || t < view.a) && span() < c.dur - 0.01) setView(t - span() * 0.1, span());
+    const ph = $("#playhead");
+    ph.style.display = t >= view.a && t <= view.b ? "block" : "none";
+    ph.style.left = pct(t);
+    const oph = $("#ovph"); if (oph) oph.style.left = `${t / c.dur * 100}%`;
+    $("#time").textContent = `${fmt(t)} / ${fmt(c.dur)}`;
+    if (liveStart != null) drawOverlays();
+  }
+  if (rcState.on) rcTick();
+  requestAnimationFrame(tick);
+}
+let dragging = false;
+
+// scrubbing on filmstrip + waveform
+{
+  const el = $("#scrub"), ht = $("#hovert");
+  let scrubbing = false, wasPlaying = false;
+  el.addEventListener("pointerdown", e => {
+    scrubbing = dragging = true; wasPlaying = !v.paused; v.pause(); playHlUntil = null;
+    el.setPointerCapture(e.pointerId); v.currentTime = timeAt(el, e);
+  });
+  el.addEventListener("pointermove", e => {
+    const t = timeAt(el, e);
+    ht.style.display = "block"; ht.style.left = pct(t); ht.textContent = fmt(t);
+    if (scrubbing) v.currentTime = t;
+  });
+  el.addEventListener("pointerleave", () => { if (!scrubbing) ht.style.display = "none"; });
+  el.addEventListener("pointerup", () => { scrubbing = dragging = false; ht.style.display = "none"; if (wasPlaying) v.play(); });
+}
+// wheel zoom / pan
+$("#tracks").addEventListener("wheel", e => {
+  if (!clip()) return;
+  e.preventDefault();
+  if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) setView(view.a + (e.deltaX || e.deltaY) / 600 * span(), span());
+  else zoomAt(timeAt($("#scrub"), e), Math.pow(1.0018, e.deltaY));
+}, { passive: false });
+// overview: click to jump, drag to pan
+{
+  const o = $("#overview");
+  let drag = null;
+  const tAt = e => { const b = o.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)) * clip().dur; };
+  o.addEventListener("pointerdown", e => {
+    o.setPointerCapture(e.pointerId);
+    const t = tAt(e), zoomed = span() < clip().dur - 0.01;
+    if (zoomed && t >= view.a && t <= view.b) drag = { t0: t, a0: view.a };
+    else { if (zoomed) setView(t - span() / 2, span()); v.currentTime = t; drag = { t0: t, a0: view.a }; }
+  });
+  o.addEventListener("pointermove", e => { if (drag) setView(drag.a0 + tAt(e) - drag.t0, span()); });
+  o.addEventListener("pointerup", () => { drag = null; });
+}
+// painting / editing highlights in the lane
+{
+  const lane = $("#lane");
+  let drag = null;
+  lane.addEventListener("pointerdown", e => {
+    const t = timeAt(lane, e), r = rec(), b = e.target.closest(".hlb");
+    lane.setPointerCapture(e.pointerId); dragging = true;
+    if (b) { const i = +b.dataset.i, x = r.hl[i]; sel = i; drag = { mode: e.target.dataset.edge || "move", x, t0: t, s0: x.s, e0: x.e, moved: false }; }
+    else drag = { mode: "new", t0: t, moved: false };
+    drawOverlays();
+  });
+  lane.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const t = timeAt(lane, e), d = clip().dur, r = rec();
+    if (Math.abs(t - drag.t0) > span() * 0.004) drag.moved = true;
+    if (!drag.moved) return;
+    if (drag.mode === "new") {
+      const prev = r.hl[r.hl.length - 1];
+      drag.x = { id: uid(), s: drag.t0, e: drag.t0, note: "", key: false, tags: BSET && prev && catOf(prev) ? { [BSET.id]: catOf(prev) } : {} };
+      r.hl.push(drag.x); drag.mode = "e"; drag.s0 = drag.e0 = drag.t0; sel = r.hl.length - 1;
+    }
+    const x = drag.x;
+    if (drag.mode === "s") { x.s = Math.min(t, x.e - 0.2); v.currentTime = x.s; }
+    else if (drag.mode === "e") {
+      if (t < drag.s0) { x.s = t; x.e = drag.e0; } else { x.e = Math.max(t, x.s + 0.2); }
+      v.currentTime = t;
+    } else { const len = drag.e0 - drag.s0; x.s = Math.max(0, Math.min(d - len, drag.s0 + t - drag.t0)); x.e = x.s + len; }
+    x.s = Math.max(0, x.s); x.e = Math.min(d, x.e);
+    drawOverlays(); drawOverview();
+  });
+  lane.addEventListener("pointerup", () => {
+    dragging = false;
+    if (!drag) return;
+    const r = rec();
+    if (!drag.moved && drag.mode !== "new") playHl(r.hl.indexOf(drag.x));
+    else if (!drag.moved) { v.currentTime = drag.t0; sel = null; renderHls(); drawOverlays(); }
+    else {
+      const x = drag.x;
+      x.s = +x.s.toFixed(2); x.e = +x.e.toFixed(2);
+      if (x.e - x.s < 0.3) x.e = Math.min(clip().dur, x.s + 0.3);
+      sortHls(); sel = r.hl.indexOf(x);
+      afterHlChange();
+    }
+    drag = null;
+  });
+}
+
+/* ================= controls ================= */
+function syncButtons() {
+  $("#playbtn").textContent = v.paused ? "▶ Play" : "❚❚ Pause";
+  $("#vidwrap").classList.toggle("paused", v.paused);
+  $("#loopbtn").classList.toggle("on", state.loop);
+  $("#mutebtn").textContent = v.muted ? "🔇" : "🔊";
+  $("#vol").value = state.volume;
+  const sp = $("#speed"); sp.innerHTML = "";
+  for (const s of SPEEDS) sp.append(h("button", { class: "cbtn" + (state.speed === s ? " on" : ""), style: "margin-right:3px", onclick: () => setSpeed(s) }, s + "×"));
+}
+function setSpeed(s) { state.speed = s; v.playbackRate = s; syncButtons(); save(); }
+const togglePlay = () => { playHlUntil = null; v.paused ? v.play() : v.pause(); };
+v.addEventListener("play", syncButtons); v.addEventListener("pause", syncButtons); v.addEventListener("volumechange", syncButtons);
+v.addEventListener("click", togglePlay);
+v.addEventListener("ended", () => { if (liveStart != null) stopLive(); else if (state.loop && playHlUntil == null) { v.currentTime = 0; v.play(); } });
+$("#playbtn").onclick = togglePlay;
+$("#loopbtn").onclick = () => { state.loop = !state.loop; syncButtons(); save(); };
+$("#mutebtn").onclick = () => { v.muted = !v.muted; state.muted = v.muted; save(); };
+$("#vol").oninput = e => { state.volume = +e.target.value; v.volume = state.volume; if (v.muted) { v.muted = false; state.muted = false; } save(); };
+$("#markbtn").onclick = () => liveStart == null ? startLive() : stopLive();
+$("#zoomin").onclick = () => zoomBy(1 / 1.6);
+$("#zoomout").onclick = () => zoomBy(1.6);
+$("#zoomfit").onclick = () => setView(0, clip().dur);
+$("#add3").onclick = () => addHl(v.currentTime, v.currentTime + 3);
+$("#add6").onclick = () => addHl(v.currentTime, v.currentTime + 6);
+$("#addview").onclick = () => addHl(view.a, view.b);
+$("#prevbtn").onclick = () => go(-1);
+$("#nextbtn").onclick = () => go(1);
+$("#notes").addEventListener("input", e => { rec().notes = e.target.value; save(); });
+$("#pnotes").addEventListener("input", e => { state.notes = e.target.value; save(); });
+$("#helpbtn").onclick = () => $("#help").classList.toggle("show");
+$("#help").onclick = e => { if (e.target.id === "help") $("#help").classList.remove("show"); };
+$("#tab-review").onclick = () => setMode("review");
+$("#tab-board").onclick = () => setMode("board");
+addEventListener("resize", () => { if (clip() && state.view === "review") drawTimeline(); });
+
+function setMode(m) {
+  state.view = m;
+  $("#app").classList.toggle("board-mode", m === "board");
+  $("#tab-review").classList.toggle("on", m === "review");
+  $("#tab-board").classList.toggle("on", m === "board");
+  if (m === "board") { v.pause(); renderBoard(); } else { renderList(); requestAnimationFrame(drawTimeline); }
+  save();
+}
+
+document.addEventListener("keydown", e => {
+  if (rcState.on) return rcKey(e);
+  const typing = e.target.matches("textarea, input:not([type=range]), select");
+  if (e.key === "Escape") { e.target.blur?.(); $("#help").classList.remove("show"); return; }
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "?" || k === "/") { $("#help").classList.toggle("show"); e.preventDefault(); return; }
+  if (k === "b") { setMode(state.view === "board" ? "review" : "board"); e.preventDefault(); return; }
+  if (state.view !== "review") return;
+  const digit = /^Digit([1-9])$/.exec(e.code);
+  if (digit && e.shiftKey) {
+    const o = BSET?.options[+digit[1] - 1], x = rec().hl[sel];
+    if (o && x) { setTag(x, BSET, o.id); toast(x.tags[BSET.id] ? o.label : "Category cleared"); }
+    else if (!x) toast("Select a highlight first");
+  }
+  else if (PRIOS.find(p => p.key === e.key)) setPrio(PRIOS.find(p => p.key === e.key).id);
+  else if (k === " ") togglePlay();
+  else if (k === "arrowright") { v.pause(); v.currentTime = Math.min(clip().dur, v.currentTime + (e.shiftKey ? 1 / 30 : 1)); }
+  else if (k === "arrowleft") { v.pause(); v.currentTime = Math.max(0, v.currentTime - (e.shiftKey ? 1 / 30 : 1)); }
+  else if (k === "n" || k === "arrowdown") go(1);
+  else if (k === "p" || k === "arrowup") go(-1);
+  else if (k === "u") nextTodo();
+  else if (k === "h") liveStart == null ? startLive() : stopLive();
+  else if (k === "i") { inMark = v.currentTime; drawOverlays(); toast("In point set: press O for the out point"); }
+  else if (k === "o") { addHl(inMark ?? Math.max(0, v.currentTime - 3), v.currentTime); inMark = null; toast("Highlight added"); }
+  else if (k === "k" && sel != null) { const x = rec().hl[sel]; x.key = !x.key; afterHlChange(); toast(x.key ? "★ Key moment" : "Not a key moment"); }
+  else if (k === "tab") { const n = rec().hl.length; if (n) selectHl(sel == null ? 0 : (sel + (e.shiftKey ? n - 1 : 1)) % n, true); }
+  else if (k === "l") $("#loopbtn").click();
+  else if (k === "m") $("#mutebtn").click();
+  else if (k === "=" || k === "+") zoomBy(1 / 1.6);
+  else if (k === "-" || k === "_") zoomBy(1.6);
+  else if (k === "0") setView(0, clip().dur);
+  else if (k === "[" || k === "]") { const i = SPEEDS.indexOf(state.speed) + (k === "]" ? 1 : -1); if (SPEEDS[i]) setSpeed(SPEEDS[i]); }
+  else if ((k === "delete" || k === "backspace") && sel != null) delHl(sel);
+  else return;
+  e.preventDefault();
+});
+
+/* ================= board ================= */
+const prioKey = id => state.clips[id]?.prio || "none";
+function allHls() {
+  const out = [];
+  for (const c of orderedClips()) for (const x of state.clips[c.id]?.hl || []) out.push({ c, x });
+  return out;
+}
+function syncOrder() {
+  const all = allHls(), ids = new Set(all.map(o => o.x.id));
+  state.order = state.order.filter(id => ids.has(id));
+  const have = new Set(state.order);
+  for (const o of all) if (!have.has(o.x.id)) state.order.push(o.x.id);
+  const gs = boardGroupIds();
+  state.boardGroups = gs;
+}
+function boardGroupIds() {
+  const ids = BSET ? BSET.options.map(o => o.id) : [];
+  const saved = (state.boardGroups || []).filter(g => ids.includes(g) || g === NONE);
+  for (const g of [...ids, NONE]) if (!saved.includes(g)) saved.push(g);
+  return saved;
+}
+function boardItems() {
+  const inc = state.boardPrios || ["must", "try", "space", "none"];
+  const pos = Object.fromEntries((state.order || []).map((id, i) => [id, i]));
+  const all = allHls().filter(o => prioKey(o.c.id) !== "dont" && inc.includes(prioKey(o.c.id)));
+  all.sort((a, b) => (pos[a.x.id] ?? 1e9) - (pos[b.x.id] ?? 1e9));
+  const groups = boardGroupIds().map(g => ({ g, items: all.filter(o => (catOf(o.x) || NONE) === g) }));
+  const seq = groups.flatMap(gr => gr.items);
+  return { groups, seq, total: seq.reduce((a, o) => a + hlDur(o.x), 0) };
+}
+function groupMeta(g) {
+  if (g === NONE) return { label: "No category yet", color: "var(--dim)" };
+  const o = OPT[BSET.id][g]; return { label: o.label, color: o.color || "var(--accent)" };
+}
+function thumbStyle(c, t) {
+  const k = Math.max(0, Math.min(c.tiles - 1, Math.floor(t / c.dur * c.tiles)));
+  return `background-image:url('media/strips/${encodeURIComponent(c.id)}.jpg');background-size:${c.tiles * 100}% 100%;background-position:${c.tiles > 1 ? k / (c.tiles - 1) * 100 : 0}% 0`;
+}
+
+function renderBoard() {
+  syncOrder();
+  renderTop();
+  const { groups, seq, total } = boardItems();
+  const T = CFG.target || {};
+  $("#btotal").innerHTML = `${fmtS(total)}<small>${seq.length} highlight${seq.length === 1 ? "" : "s"}${T.min ? ` · target ${fmtS(T.min)}–${fmtS(T.max || T.min)}` : ""}</small>`;
+  const scale = Math.max(total, (T.max || T.min || 60) * 1.25);
+  $("#bfill").style.width = `${total / scale * 100}%`;
+  $("#bfill").style.background = T.max && total > T.max ? "var(--bad)" : T.min && total >= T.min ? "var(--good)" : "var(--accent)";
+  if (T.min) { $("#bzone").style.left = `${T.min / scale * 100}%`; $("#bzone").style.width = `${((T.max || T.min) - T.min) / scale * 100}%`; }
+  $("#bmeterl").innerHTML = "";
+  const msg = !T.min ? "" : total < T.min ? `${fmtS(T.min - total)} short of the target` : T.max && total > T.max ? `${fmtS(total - T.max)} over: trim or drop some` : "Within the target length";
+  $("#bmeterl").append(h("span", {}, msg), h("span", {}, `${seq.filter(o => o.x.key).length} key moments`));
+
+  const bo = $("#bopts"); bo.innerHTML = "";
+  bo.append(h("span", { class: "lbl" }, "Include:"));
+  const inc = state.boardPrios || ["must", "try", "space", "none"];
+  for (const [id, label] of [...PRIOS.filter(p => p.id !== "dont").map(p => [p.id, p.label]), ["none", "No priority yet"]])
+    bo.append(h("button", { class: "chipbtn" + (inc.includes(id) ? " on" : ""), onclick: () => {
+      const s = new Set(inc); s.has(id) ? s.delete(id) : s.add(id); state.boardPrios = [...s]; renderBoard(); save();
+    } }, label));
+  $("#brief").textContent = CFG.brief || "";
+  if (document.activeElement !== $("#pnotes")) $("#pnotes").value = state.notes || "";
+
+  const box = $("#bgroups"); box.innerHTML = "";
+  for (const { g, items } of groups) {
+    if (g === NONE && !items.length) continue;
+    const m = groupMeta(g);
+    const sec = h("section", { class: "bgroup" + (items.length ? "" : " empty"), style: `--c:${m.color}`, "data-g": g });
+    const head = h("div", { class: "bgh", draggable: "true", title: "Drag to reorder sections" },
+      h("span", { class: "grip" }, "⋮⋮"), h("h3", {}, m.label),
+      h("span", { class: "meta" }, `${items.length} · ${fmtS(items.reduce((a, o) => a + hlDur(o.x), 0))}`),
+      h("span", { style: "flex:1" }),
+      items.length ? h("button", { class: "cbtn", onclick: () => openRC(seq.indexOf(items[0]), items.length) }, "▶ Play section") : null);
+    head.addEventListener("dragstart", e => { dragItem = { type: "group", id: g }; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", g); });
+    const cards = h("div", { class: "cards", "data-g": g });
+    if (!items.length) cards.append(h("div", { class: "none" }, "Drag highlights here, or tag them with this category in Review."));
+    for (const o of items) cards.append(boardCard(o, seq.indexOf(o)));
+    sec.append(head, cards);
+    box.append(sec);
+  }
+  if (!seq.length) box.append(h("div", { class: "empty", style: "max-width:520px" }, "No highlights yet. Mark some in Review and they'll appear here grouped by category."));
+}
+function boardCard(o, n) {
+  const { c, x } = o;
+  const focus = TAGSETS.filter(s => s !== BSET).flatMap(s => {
+    const val = x.tags?.[s.id]; const ids = Array.isArray(val) ? val : val ? [val] : [];
+    return ids.filter(id => OPT[s.id][id]).map(id => h("span", { class: s.id === "role" ? "role" : "" }, OPT[s.id][id].label));
+  });
+  const p = PRIO[state.clips[c.id]?.prio];
+  const card = h("div", { class: "card", draggable: "true", "data-id": x.id, title: `${c.file}\n${fmt(x.s)}–${fmt(x.e)}` },
+    h("div", { class: "th", style: thumbStyle(c, (x.s + x.e) / 2) },
+      h("span", { class: "n" }, `#${n + 1}`), x.key ? h("span", { class: "key" }, "★") : null,
+      h("span", { class: "d" }, `${hlDur(x).toFixed(1)}s`)),
+    h("div", { class: "acts" },
+      h("button", { onclick: () => openRC(n) }, "▶ Play from here"),
+      h("button", { onclick: () => openInReview(c.id, x.id) }, "Edit")),
+    h("div", { class: "bd" },
+      h("div", { class: "t1" }, pretty(c)),
+      h("div", { class: "t2" }, `${fmt(x.s)} – ${fmt(x.e)}`, p ? h("span", { style: `color:${p.color};margin-left:6px;font-weight:600;filter:brightness(1.3)` }, p.label) : null),
+      focus.length ? h("div", { class: "t3" }, focus) : null,
+      x.note ? h("div", { class: "nt" }, x.note) : null));
+  card.addEventListener("dragstart", e => { dragItem = { type: "card", id: x.id }; card.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", x.id); });
+  card.addEventListener("dragend", () => { card.classList.remove("dragging"); clearDrop(); });
+  return card;
+}
+function openInReview(cid, hid) {
+  setMode("review");
+  load(cid);
+  const i = rec().hl.findIndex(x => x.id === hid);
+  if (i >= 0) { const x = rec().hl[i]; v.addEventListener("loadedmetadata", () => { v.currentTime = x.s; }, { once: true }); selectHl(i, false); }
+}
+
+// drag and drop on the board
+let dragItem = null, dropAt = null;
+function clearDrop() { document.querySelectorAll(".drop-before,.drop-after,.dropg").forEach(e => e.classList.remove("drop-before", "drop-after", "dropg")); }
+$("#bgroups").addEventListener("dragover", e => {
+  if (!dragItem) return;
+  const sec = e.target.closest(".bgroup"); if (!sec) return;
+  e.preventDefault(); clearDrop();
+  if (dragItem.type === "group") { sec.classList.add("dropg"); dropAt = { g: sec.dataset.g }; return; }
+  const cards = [...sec.querySelectorAll(".card")].filter(c => c.dataset.id !== dragItem.id);
+  let best = null, bd = Infinity;
+  for (const c of cards) {
+    const b = c.getBoundingClientRect();
+    const d = Math.hypot(e.clientX - (b.left + b.width / 2), Math.max(0, Math.abs(e.clientY - (b.top + b.height / 2)) - b.height / 2) * 3);
+    if (d < bd) { bd = d; best = c; }
+  }
+  if (best) {
+    const b = best.getBoundingClientRect(), after = e.clientX > b.left + b.width / 2;
+    best.classList.add(after ? "drop-after" : "drop-before");
+    dropAt = { g: sec.dataset.g, ref: best.dataset.id, after };
+  } else { sec.classList.add("dropg"); dropAt = { g: sec.dataset.g }; }
+});
+$("#bgroups").addEventListener("drop", e => {
+  e.preventDefault(); clearDrop();
+  if (!dragItem || !dropAt) return;
+  if (dragItem.type === "group") {
+    const gs = boardGroupIds(), from = gs.indexOf(dragItem.id), to = gs.indexOf(dropAt.g);
+    if (from >= 0 && to >= 0 && from !== to) { gs.splice(from, 1); gs.splice(to, 0, dragItem.id); state.boardGroups = gs; }
+  } else {
+    const found = allHls().find(o => o.x.id === dragItem.id);
+    if (found && BSET) { found.x.tags ||= {}; found.x.tags[BSET.id] = dropAt.g === NONE ? null : dropAt.g; }
+    const order = state.order.filter(id => id !== dragItem.id);
+    let at;
+    if (dropAt.ref) at = order.indexOf(dropAt.ref) + (dropAt.after ? 1 : 0);
+    else {   // empty spot in a section: after its last card
+      const { groups } = boardItems();
+      const last = groups.find(gr => gr.g === dropAt.g)?.items.filter(o => o.x.id !== dragItem.id).pop();
+      at = last ? order.indexOf(last.x.id) + 1 : order.length;
+    }
+    order.splice(at, 0, dragItem.id); state.order = order;
+  }
+  dragItem = dropAt = null;
+  renderBoard(); save();
+});
+document.addEventListener("dragend", () => { dragItem = null; clearDrop(); });
+
+/* ================= rough cut player ================= */
+const rcState = { on: false, seq: [], i: 0, cur: null, nxt: null, paused: false, end: 0 };
+const rcVids = [$("#rcA"), $("#rcB")];
+function rcSrc(c) { return `media/proxy/${encodeURIComponent(c.id)}.mp4`; }
+function rcPrime(el, o) {
+  // load a segment into a hidden player, parked at its in point
+  const url = new URL(rcSrc(o.c), location.href).href;
+  el.pause();
+  if (el.src !== url) { el.src = url; el.addEventListener("loadedmetadata", () => { el.currentTime = o.x.s; }, { once: true }); }
+  else el.currentTime = o.x.s;
+  el.dataset.seg = o.x.id;
+}
+function openRC(start = 0, count) {
+  const { seq } = boardItems();
+  if (!seq.length) return toast("Nothing to play yet");
+  rcState.seq = count ? seq.slice(start, start + count) : seq;
+  rcState.i = count ? 0 : start; rcState.on = true; rcState.paused = false;
+  $("#rc").classList.add("show");
+  rcVids.forEach(el => { el.volume = state.volume; el.muted = false; });
+  rcSegs();
+  rcStart(rcState.i, true);
+}
+function closeRC() { rcState.on = false; rcVids.forEach(el => el.pause()); $("#rc").classList.remove("show"); }
+function rcStart(i, cold) {
+  const seq = rcState.seq;
+  if (i >= seq.length) { rcVids.forEach(el => el.pause()); rcState.paused = true; rcSync(); toast("End of rough cut"); return; }
+  i = Math.max(0, i); rcState.i = i;
+  const o = seq[i];
+  let cur = rcVids.find(el => el.dataset.seg === o.x.id && el.readyState >= 2 && !cold);
+  if (!cur) { cur = rcVids[0].classList.contains("hide") ? rcVids[0] : rcVids[1]; rcPrime(cur, o); }
+  const other = rcVids.find(el => el !== cur);
+  other.pause(); other.classList.add("hide"); cur.classList.remove("hide");
+  rcState.cur = cur; rcState.end = o.x.e;
+  if (!rcState.paused) { const p = cur.play(); p?.catch?.(() => {}); }
+  if (seq[i + 1]) rcPrime(other, seq[i + 1]);
+  const m = groupMeta(catOf(o.x) || NONE);
+  $("#rccap").style.setProperty("--c", m.color);
+  $("#rccap").innerHTML = "";
+  $("#rccap").append(h("b", {}, m.label), `  ·  ${pretty(o.c)}  ${fmt(o.x.s)}–${fmt(o.x.e)}`, o.x.note ? h("div", { style: "color:#c9cdd8;margin-top:2px" }, o.x.note) : null);
+  rcSync();
+}
+function rcTick() {
+  const el = rcState.cur; if (!el) return;
+  const o = rcState.seq[rcState.i];
+  if (!rcState.paused && el.currentTime >= rcState.end - 0.02) rcStart(rcState.i + 1);
+  const segEl = $("#rcsegs").children[rcState.i];
+  if (segEl && o) segEl.firstChild.style.width = `${Math.max(0, Math.min(1, (el.currentTime - o.x.s) / hlDur(o.x))) * 100}%`;
+  const before = rcState.seq.slice(0, rcState.i).reduce((a, q) => a + hlDur(q.x), 0);
+  const all = rcState.seq.reduce((a, q) => a + hlDur(q.x), 0);
+  $("#rctime").textContent = `${fmt(before + Math.max(0, el.currentTime - (o?.x.s || 0)))} / ${fmt(all)}`;
+}
+function rcSegs() {
+  const box = $("#rcsegs"); box.innerHTML = "";
+  rcState.seq.forEach((o, i) => box.append(h("div", { style: `flex:${hlDur(o.x)};--c:${groupMeta(catOf(o.x) || NONE).color}`, title: `${pretty(o.c)} ${fmt(o.x.s)}`,
+    onclick: () => rcStart(i, true) }, h("span", { class: "p" }))));
+}
+function rcSync() {
+  [...$("#rcsegs").children].forEach((d, i) => { d.classList.toggle("cur", i === rcState.i); if (i !== rcState.i) d.firstChild.style.width = i < rcState.i ? "100%" : "0"; });
+  $("#rcplay").textContent = rcState.paused ? "▶ Play" : "❚❚ Pause";
+  $("#rcinfo").textContent = `${rcState.i + 1} of ${rcState.seq.length}`;
+}
+function rcToggle() { rcState.paused = !rcState.paused; rcState.paused ? rcState.cur.pause() : rcState.cur.play(); rcSync(); }
+function rcKey(e) {
+  const k = e.key;
+  if (k === "Escape") closeRC();
+  else if (k === " ") rcToggle();
+  else if (k === "ArrowRight") rcStart(rcState.i + 1, true);
+  else if (k === "ArrowLeft") rcStart(rcState.i - (rcState.cur.currentTime - rcState.seq[rcState.i].x.s > 1 ? 0 : 1), true);
+  else return;
+  e.preventDefault();
+}
+$("#rcclose").onclick = closeRC;
+$("#rcplay").onclick = rcToggle;
+$("#rcnext").onclick = () => rcStart(rcState.i + 1, true);
+$("#rcprev").onclick = () => rcStart(rcState.i - 1, true);
+$("#rcopen").onclick = () => { const o = rcState.seq[rcState.i]; closeRC(); openInReview(o.c.id, o.x.id); };
+$("#playall").onclick = () => openRC(0);
+rcVids.forEach(el => el.addEventListener("click", rcToggle));
+
+/* ================= boot ================= */
+(async () => {
+  try {
+    CFG = await (await fetch("project.json")).json();
+    const r = await fetch("clips.json");
+    CLIPS = r.ok ? await r.json() : [];
+  } catch { offline(true); clearInterval(retryTimer); return; }
+  document.title = `${CFG.title} · Cutting Room`;
+  $("#ptitle").innerHTML = ""; $("#ptitle").append(CFG.title, CFG.kind ? h("small", {}, CFG.kind) : null);
+  if (CFG.accent) document.documentElement.style.setProperty("--accent", CFG.accent);
+  if (!CLIPS.length) {
+    document.querySelector(".main").innerHTML = `<div class="boot" style="grid-column:1/-1">No clips prepared yet.<br>Run <code>python engine\\prepare.py ${PID}</code> in the cutting-room folder, then refresh.</div>`;
+    return;
+  }
+  PRIOS = CFG.priorities; PRIO = Object.fromEntries(PRIOS.map(p => [p.id, p]));
+  TAGSETS = CFG.highlightTags || [];
+  BSET = TAGSETS.find(s => s.board) || TAGSETS.find(s => s.mode !== "multi") || null;
+  for (const s of TAGSETS) OPT[s.id] = Object.fromEntries(s.options.map(o => [o.id, o]));
+  for (const c of CLIPS) CLIP[c.id] = c;
+
+  let server = null, local = null;
+  try { const r = await fetch("review.json"); if (r.ok) server = await r.json(); } catch {}
+  try { local = JSON.parse(localStorage.getItem(LSKEY)); } catch {}
+  const saved = local && (!server || (local.savedAt || 0) >= (server.savedAt || 0)) ? local : server;
+  if (saved) Object.assign(state, saved);
+  for (const r of Object.values(state.clips)) for (const x of r.hl || []) { x.id ||= uid(); x.tags ||= {}; }
+
+  syncButtons();
+  load(CLIP[state.cur] ? state.cur : orderedClips()[0].id);
+  setMode(state.view === "board" ? "board" : "review");
+  if (!saved) $("#help").classList.add("show");
+  if (saved === local && local) flush();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
